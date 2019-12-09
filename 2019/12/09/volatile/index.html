@@ -87,10 +87,10 @@
 <meta property="og:site_name" content="小帅砸个人博客">
 <meta property="og:description" content="1.volatile介绍简介：volatile是Java虚拟机提供的轻量级的同步机制。 2.volatile特性   1.保证可见性   2.禁止指令重排   3.不保证原子性  2.1 JMM在介绍volatile的3特性之前。我们先说一下JMM。 2.1.1 什么是JMM？简介：JMM是（Java内存模型Java Memory Model）本身是一种抽象的概念，并不真实存在，它描述的是一组规范">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="c:%5CUsers%5CIT-ars%5CDesktop%5C1.png">
-<meta property="og:updated_time" content="2019-12-09T07:19:34.698Z">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;.io&#x2F;&#x2F;jmm.png">
+<meta property="og:updated_time" content="2019-12-09T07:31:21.891Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="c:%5CUsers%5CIT-ars%5CDesktop%5C1.png">
+<meta name="twitter:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;.io&#x2F;&#x2F;jmm.png">
 
 
 
@@ -382,8 +382,7 @@
 <h2 id="2-1-JMM"><a href="#2-1-JMM" class="headerlink" title="2.1 JMM"></a>2.1 JMM</h2><p>在介绍volatile的3特性之前。我们先说一下JMM。</p>
 <h3 id="2-1-1-什么是JMM？"><a href="#2-1-1-什么是JMM？" class="headerlink" title="2.1.1 什么是JMM？"></a>2.1.1 什么是JMM？</h3><p>简介：JMM是（Java内存模型Java Memory Model）本身是一种抽象的概念，并不真实存在，它描述的是一组规范或者规则。</p>
 <p>由于JVM运行程序的实体是线程,而每个线程创建时JVM都会为其创建一个工作内存(有些地方成为栈空间),工作内存是每个线程的私有数据区域,而Java内存模型中规定所有变量都存储在主内存,主内存是共享内存区域,所有线程都可访问,但线程对变量的操作(读取赋值等)必须在工作内存中进行,首先要将变量从主内存拷贝到自己的工作空间,然后对变量进行操作,操作完成再将变量写回主内存,不能直接操作主内存中的变量,各个线程中的工作内存储存着主内存中的变量副本拷贝,因此不同的线程无法访问对方的工作内存,此案成间的通讯(传值) 必须通过主内存来完成,其简要访问过程如下图:</p>
-<p><img src="C:%5CUsers%5CIT-ars%5CDesktop%5C1.png" alt=""></p>
-
+<img src="/.io//jmm.png" style="zoom:80%;">
       
     </div>
     
