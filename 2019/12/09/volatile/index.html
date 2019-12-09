@@ -87,10 +87,12 @@
 <meta property="og:site_name" content="小帅砸个人博客">
 <meta property="og:description" content="1.volatile介绍简介：volatile是Java虚拟机提供的轻量级的同步机制。 2.volatile特性   1.保证可见性   2.禁止指令重排   3.不保证原子性  2.1 JMM在介绍volatile的3特性之前。我们先说一下JMM。 2.1.1 什么是JMM？简介：JMM是（Java内存模型Java Memory Model）本身是一种抽象的概念，并不真实存在，它描述的是一组规范">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;.io&#x2F;&#x2F;jmm.png">
-<meta property="og:updated_time" content="2019-12-09T07:31:21.891Z">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;09&#x2F;volatile&#x2F;jmm.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;09&#x2F;volatile&#x2F;volatileNoSafe.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;09&#x2F;volatile&#x2F;sort.png">
+<meta property="og:updated_time" content="2019-12-09T09:12:58.592Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;.io&#x2F;&#x2F;jmm.png">
+<meta name="twitter:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;09&#x2F;volatile&#x2F;jmm.png">
 
 
 
@@ -336,7 +338,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  358
+                  723
                 </span>
               
 
@@ -352,7 +354,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  1
+                  2
                 </span>
               
             </div>
@@ -381,8 +383,33 @@
 </blockquote>
 <h2 id="2-1-JMM"><a href="#2-1-JMM" class="headerlink" title="2.1 JMM"></a>2.1 JMM</h2><p>在介绍volatile的3特性之前。我们先说一下JMM。</p>
 <h3 id="2-1-1-什么是JMM？"><a href="#2-1-1-什么是JMM？" class="headerlink" title="2.1.1 什么是JMM？"></a>2.1.1 什么是JMM？</h3><p>简介：JMM是（Java内存模型Java Memory Model）本身是一种抽象的概念，并不真实存在，它描述的是一组规范或者规则。</p>
-<p>由于JVM运行程序的实体是线程,而每个线程创建时JVM都会为其创建一个工作内存(有些地方成为栈空间),工作内存是每个线程的私有数据区域,而Java内存模型中规定所有变量都存储在主内存,主内存是共享内存区域,所有线程都可访问,但线程对变量的操作(读取赋值等)必须在工作内存中进行,首先要将变量从主内存拷贝到自己的工作空间,然后对变量进行操作,操作完成再将变量写回主内存,不能直接操作主内存中的变量,各个线程中的工作内存储存着主内存中的变量副本拷贝,因此不同的线程无法访问对方的工作内存,此案成间的通讯(传值) 必须通过主内存来完成,其简要访问过程如下图:</p>
-<img src="/.io//jmm.png" style="zoom:80%;">
+<p>由于JVM运行程序的实体是线程,而每个线程创建时JVM都会为其创建一个<font color="red">工作内存</font>(有些地方成为栈空间),</p>
+<p>工作内存是每个线程的私有数据区域, 而Java内存模型中规定所有变量都存储在主内存,</p>
+<p>主内存是共享内存区域,所有线程都可访问,<font color="red">但线程对变量的操作(读取赋值等)必须在工作内存中进行,首先要将变量从主内存拷贝到自己的工作空间,然后对变量进行操作,操作完成再将变量写回主内存</font>,不能直接操作主内存中的变量,各个线程中的工作内存储存着主内存中的变量副本拷贝,</p>
+<p>因此不同的线程无法访问对方的工作内存,此案成间的通讯(传值) 必须通过主内存来完成,其简要访问过程如下图:</p>
+<img src="/2019/12/09/volatile/jmm.png" style="zoom:80%;">
+
+<h3 id="2-1-2-JMM-保证线程安全的特性"><a href="#2-1-2-JMM-保证线程安全的特性" class="headerlink" title="2.1.2 JMM 保证线程安全的特性"></a>2.1.2 JMM 保证线程安全的特性</h3><blockquote>
+<ul>
+<li>保证可见性</li>
+<li>保证原子性</li>
+<li>禁止指令重排</li>
+</ul>
+</blockquote>
+<h2 id="2-2-可见性"><a href="#2-2-可见性" class="headerlink" title="2.2 可见性"></a>2.2 可见性</h2><p>各个线程对主内存中共享变量的操作都是各自的线程拷贝到各自的工作内存中，操作后再写回主内存中。</p>
+<blockquote>
+<p>  存在问题：线程A修改了共享变量X的值（在自己的线程中进行修改）但是还未写回到主内存中，这时另外一个线程B又对内存中的一个共享变量X进行操作,但此时A线程工作内存中的共享变量X对线程B来说是<font color="red">不可见</font>的,这种<font color="red">工作内存与主内存</font><strong>同步延迟现象</strong>造成了可见性的问题</p>
+</blockquote>
+<h2 id="2-3-原子性"><a href="#2-3-原子性" class="headerlink" title="2.3 原子性"></a>2.3 原子性</h2><img src="/2019/12/09/volatile/volatileNoSafe.png" style="zoom:80%;">
+
+<p>volatile 不保证其原子性。保证原子性需加锁或者CAS等</p>
+<h2 id="2-4-有序性-禁止指令重排"><a href="#2-4-有序性-禁止指令重排" class="headerlink" title="2.4 有序性(禁止指令重排)"></a>2.4 有序性(禁止指令重排)</h2><p>计算机在执行程序时,为了提高性能，编译器和处理器尝尝会做指令重排,一般分为以下3种</p>
+<img src="/2019/12/09/volatile/sort.png">
+
+<p>单线程环境里面确保程序最终执行结果和代码顺序执行结果一直。</p>
+<p>处理器在进行重新排序是必须考虑指令之间的<font color="red">数据依赖性</font></p>
+<p>多线程环境中线程交替执行,由于编译器优化重排的存在，两个线程适中的变量能否保持一致性是无法预料的。</p>
+
       
     </div>
     
@@ -558,7 +585,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-volatile介绍"><span class="nav-number">1.</span> <span class="nav-text">1.volatile介绍</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-volatile特性"><span class="nav-number">2.</span> <span class="nav-text">2.volatile特性</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-JMM"><span class="nav-number">2.1.</span> <span class="nav-text">2.1 JMM</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-1-什么是JMM？"><span class="nav-number">2.1.1.</span> <span class="nav-text">2.1.1 什么是JMM？</span></a></li></ol></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-volatile介绍"><span class="nav-number">1.</span> <span class="nav-text">1.volatile介绍</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#2-volatile特性"><span class="nav-number">2.</span> <span class="nav-text">2.volatile特性</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#2-1-JMM"><span class="nav-number">2.1.</span> <span class="nav-text">2.1 JMM</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-1-什么是JMM？"><span class="nav-number">2.1.1.</span> <span class="nav-text">2.1.1 什么是JMM？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-1-2-JMM-保证线程安全的特性"><span class="nav-number">2.1.2.</span> <span class="nav-text">2.1.2 JMM 保证线程安全的特性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-2-可见性"><span class="nav-number">2.2.</span> <span class="nav-text">2.2 可见性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-3-原子性"><span class="nav-number">2.3.</span> <span class="nav-text">2.3 原子性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-4-有序性-禁止指令重排"><span class="nav-number">2.4.</span> <span class="nav-text">2.4 有序性(禁止指令重排)</span></a></li></ol></li></ol></div>
             
 
           </div>
@@ -599,7 +626,7 @@
     
       <span class="post-meta-item-text">Site words total count&#58;</span>
     
-    <span title="Site words total count">367</span>
+    <span title="Site words total count">732</span>
   
 </div>
 
