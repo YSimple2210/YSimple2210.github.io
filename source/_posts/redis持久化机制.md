@@ -137,3 +137,11 @@ Redis的数据都存放在内存中，如果没有配置持久化，redis重启�
 >   -   注意：Redis的LRU算法并非完整的实现,完整的LRU实现是因为需要太多的内存
 >   -   方法：通过对少量keys进行取样（50%），然后挥手其中一个最好的key
 >   -   配置方式：maxmemory-samples 5
+
+### LFU算法
+
+> LFU（Least Frequently Used）根据数据的历史访问频率来淘汰数据
+>
+> - 核心思想：如果数据过去被访问多次，那么将来被访问的频率也更高
+> - Redis实现的是<font color="red">近似</font>的实现，每次对ke y进行访问时，用基于<font color="red">概率的对数计数器</font>来记录访问次数，同时这个计数器会随着时间推移而减小。
+> - 启用LFU算法后，可以使用热点数据分析功能（redis-cli --hotkeys）
