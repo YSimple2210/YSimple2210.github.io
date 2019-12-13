@@ -410,7 +410,16 @@
       
         
           
-          Redis哨兵如果选择master / 
+          Redis哨兵如果选择master / 哨兵的集群
+哨兵（Sentinel）机制核心作用
+
+服务发现和健康检查流程
+
+故障切换流程
+
+7大核心概念
+
+哨兵如何知道Redis主从信息（自动发现机制 [i
           ...
           <!--noindex-->
           <div class="post-button text-center">
@@ -597,6 +606,17 @@
           Redis主从复制介绍什么是主从复制
 
 
+
+为什么使用主从复制
+
+Redis-server 单点故障
+单节点QPS有限
+
+
+主从复制应用场景分析
+
+读写分离场景，规避Redis单机瓶颈
+故障切换，Ma
           ...
           <!--noindex-->
           <div class="post-button text-center">
@@ -780,7 +800,8 @@
       
         
           
-          Redis持久化介绍Redis的数据都存
+          Redis持久化介绍Redis的数据都存放在内存中，如果没有配置持久化，redis重启后数据就会全丢失，开始持久化后，数据就会存放在磁盘中，当Redis重启后，就可以从磁盘中回复数据。
+Redis持久
           ...
           <!--noindex-->
           <div class="post-button text-center">
@@ -964,7 +985,13 @@
       
         
           
-          1.volatile介绍简介：volat
+          1.volatile介绍简介：volatile是Java虚拟机提供的轻量级的同步机制。
+2.volatile特性
+  1.保证可见性
+  2.禁止指令重排
+  3.不保证原子性
+
+2.1 JMM在介绍
           ...
           <!--noindex-->
           <div class="post-button text-center">
