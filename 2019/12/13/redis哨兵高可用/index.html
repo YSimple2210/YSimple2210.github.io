@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="线程安全," />
+  <meta name="keywords" content="redis哨兵," />
 
 
 
@@ -79,16 +79,22 @@
 
 
 
-<meta name="description" content="1.    JUC多线程及并发包">
-<meta name="keywords" content="线程安全">
+<meta name="description" content="Redis哨兵如果选择master &#x2F; 哨兵的集群 哨兵（Sentinel）机制核心作用  服务发现和健康检查流程  故障切换流程  7大核心概念  哨兵如何知道Redis主从信息（自动发现机制 [info replication]） 什么是master主观下线 什么是客观下线 哨兵之间如何通信（哨兵之间的自动发现） 哪个哨兵负责故障转移（哨兵领导选举机制） slave选举机制 最终主从切换过程">
+<meta name="keywords" content="redis哨兵">
 <meta property="og:type" content="article">
-<meta property="og:title" content="多线程详解">
-<meta property="og:url" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;09&#x2F;%E5%A4%9A%E7%BA%BF%E7%A8%8B%E8%AF%A6%E8%A7%A3&#x2F;">
+<meta property="og:title" content="redis哨兵高可用">
+<meta property="og:url" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;13&#x2F;redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8&#x2F;">
 <meta property="og:site_name" content="小帅砸个人博客">
-<meta property="og:description" content="1.    JUC多线程及并发包">
+<meta property="og:description" content="Redis哨兵如果选择master &#x2F; 哨兵的集群 哨兵（Sentinel）机制核心作用  服务发现和健康检查流程  故障切换流程  7大核心概念  哨兵如何知道Redis主从信息（自动发现机制 [info replication]） 什么是master主观下线 什么是客观下线 哨兵之间如何通信（哨兵之间的自动发现） 哪个哨兵负责故障转移（哨兵领导选举机制） slave选举机制 最终主从切换过程">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-12-09T06:47:25.508Z">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;13&#x2F;redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8&#x2F;1.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;13&#x2F;redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8&#x2F;health.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;13&#x2F;redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8&#x2F;qiehuan.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;13&#x2F;redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8&#x2F;客观下线.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;13&#x2F;redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8&#x2F;哨兵通信.png">
+<meta property="og:updated_time" content="2019-12-13T07:22:10.953Z">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;13&#x2F;redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8&#x2F;1.png">
 
 
 
@@ -118,13 +124,13 @@
 
 
 
-  <link rel="canonical" href="https://ysimple2210.github.io/2019/12/09/多线程详解/"/>
+  <link rel="canonical" href="https://ysimple2210.github.io/2019/12/13/redis哨兵高可用/"/>
 
 
 
 
 
-  <title>多线程详解 | 小帅砸个人博客</title>
+  <title>redis哨兵高可用 | 小帅砸个人博客</title>
   
 
 
@@ -251,7 +257,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://ysimple2210.github.io/2019/12/09/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E8%AF%A6%E8%A7%A3/">
+    <link itemprop="mainEntityOfPage" href="https://ysimple2210.github.io/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="Ysimple">
@@ -268,7 +274,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">多线程详解</h1>
+          <h1 class="post-title" itemprop="name headline">redis哨兵高可用</h1>
         
 
         <div class="post-meta">
@@ -280,8 +286,8 @@
               
                 <span class="post-meta-item-text">发表于</span>
               
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-12-09T10:02:40+08:00">
-                2019-12-09
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-12-13T12:53:23+08:00">
+                2019-12-13
               </time>
             
 
@@ -303,8 +309,8 @@
               
               
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Java/" itemprop="url" rel="index">
-                    <span itemprop="name">-Java</span>
+                  <a href="/categories/Redis/" itemprop="url" rel="index">
+                    <span itemprop="name">-Redis</span>
                   </a>
                 </span>
 
@@ -334,7 +340,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  9
+                  684
                 </span>
               
 
@@ -350,7 +356,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  1
+                  2
                 </span>
               
             </div>
@@ -371,7 +377,79 @@
       
 
       
-        <h1 id="1-JUC多线程及并发包"><a href="#1-JUC多线程及并发包" class="headerlink" title="1.    JUC多线程及并发包"></a>1.    JUC多线程及并发包</h1>
+        <h1 id="Redis哨兵"><a href="#Redis哨兵" class="headerlink" title="Redis哨兵"></a>Redis哨兵</h1><p>如果选择master / 哨兵的集群</p>
+<h2 id="哨兵（Sentinel）机制核心作用"><a href="#哨兵（Sentinel）机制核心作用" class="headerlink" title="哨兵（Sentinel）机制核心作用"></a>哨兵（Sentinel）机制核心作用</h2><img src="/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/1.png">
+
+<h2 id="服务发现和健康检查流程"><a href="#服务发现和健康检查流程" class="headerlink" title="服务发现和健康检查流程"></a>服务发现和健康检查流程</h2><img src="/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/health.png">
+
+<h2 id="故障切换流程"><a href="#故障切换流程" class="headerlink" title="故障切换流程"></a>故障切换流程</h2><img src="/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/qiehuan.png">
+
+<h2 id="7大核心概念"><a href="#7大核心概念" class="headerlink" title="7大核心概念"></a>7大核心概念</h2><blockquote>
+<ol>
+<li>哨兵如何知道Redis主从信息（自动发现机制 [info replication]）</li>
+<li>什么是master主观下线</li>
+<li>什么是客观下线</li>
+<li>哨兵之间如何通信（哨兵之间的自动发现）</li>
+<li>哪个哨兵负责故障转移（哨兵领导选举机制）</li>
+<li>slave选举机制</li>
+<li>最终主从切换过程</li>
+</ol>
+</blockquote>
+<h4 id="1-哨兵如何知道Redis主从信息"><a href="#1-哨兵如何知道Redis主从信息" class="headerlink" title="1.哨兵如何知道Redis主从信息"></a>1.哨兵如何知道Redis主从信息</h4><blockquote>
+<p>  哨兵配置文件中保存着主从集群中master的信息，可以通过info命令，进行主从信息自动发现</p>
+</blockquote>
+<h4 id="2-什么是主观下线"><a href="#2-什么是主观下线" class="headerlink" title="2.什么是主观下线"></a>2.什么是主观下线</h4><blockquote>
+<p>  主观下线：单个哨兵自身认为redis实例已经不能提供服务</p>
+<p>  检测机制：哨兵向redis发送ping命令， + PONG、-LOADNG、-MASTERDOWN这三种情况下认为是正常，其它回复均为无效。</p>
+<p>  对应的配置文件中内容：sentinel down-after-milliseconds mymaster 1000</p>
+</blockquote>
+<h4 id="3-客观下线"><a href="#3-客观下线" class="headerlink" title="3.客观下线"></a>3.客观下线</h4><img src="/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/客观下线.png">
+
+<blockquote>
+<p>  客观下线：一定数量值的哨兵认为master已经下线</p>
+<p>  检测机制：当哨兵主观认为master下线后，则会通过SENTINEL is-master-down-by-addr 命令，询问其它哨兵是否认为master下线。如果达成共识（达到quorum个数），就会认为master节点客观下线。开始故障转移</p>
+<p>  对应配置文件内容：sentinel monitor mymaster [ip] [quorum]</p>
+</blockquote>
+<h4 id="4-哨兵之间如果通信"><a href="#4-哨兵之间如果通信" class="headerlink" title="4.哨兵之间如果通信"></a>4.哨兵之间如果通信</h4><img src="/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/哨兵通信.png">
+
+<blockquote>
+<p>  1.哨兵之间的自动发现（注册订阅）</p>
+</blockquote>
+<h4 id="5-哨兵之间的选举机制"><a href="#5-哨兵之间的选举机制" class="headerlink" title="5.哨兵之间的选举机制"></a>5.哨兵之间的选举机制</h4><blockquote>
+<p>基于Raft算法实现的选举机制：</p>
+<ol>
+<li>拉票阶段：每个哨兵节点希望自己成为领导者</li>
+<li>sentinel节点收到拉票命令后，如果没有收到或同意其它sentinel节点的请求，就同意该sentinel节点的请求（每个sentinel只持有一个同意票数）</li>
+<li>如果sentinel节点发现自己的票数已经超过一半的数值，那么它就成为领导者，去执行故障转移</li>
+<li>投票结束后、如果超过failover-timeout的时间内，没有进行实际的故障转移，则重新拉票选举。</li>
+</ol>
+</blockquote>
+<h4 id="6-slave选举方案"><a href="#6-slave选举方案" class="headerlink" title="6.slave选举方案"></a>6.slave选举方案</h4><p>按顺序依次筛选</p>
+<blockquote>
+<p>  slave节点状态，非S_DOWN,O_DOWN,DISCONNECTED</p>
+<p>  判断规则：（down-after-milliseconds * 10） + milliseconds_snice_master_is_in_SDOWN_state</p>
+<p>  SENTINEL slave mymaster</p>
+</blockquote>
+<blockquote>
+<p>  优先级<br>  redis.conf中的一个配置：slave-priority 值越小，优先级越高</p>
+</blockquote>
+<blockquote>
+<p>  数据同步情况</p>
+<p>  Replication offset processed</p>
+</blockquote>
+<blockquote>
+<p>  最小的run id</p>
+<p>  run id比较方案：字典顺序 ,ASCII码</p>
+</blockquote>
+<h4 id="7-最终主从切换过程"><a href="#7-最终主从切换过程" class="headerlink" title="7.最终主从切换过程"></a>7.最终主从切换过程</h4><blockquote>
+<p>  针对即将成为master的slave节点。将其撤出主从集群</p>
+<p>  自动执行：slaveof no one </p>
+</blockquote>
+<blockquote>
+<p>   针对其它slave节点，使他们成为新的master的从属</p>
+<p>  自动执行：slaveof new_master_host new master_port</p>
+</blockquote>
+
       
     </div>
     
@@ -388,7 +466,7 @@
       
         <div class="post-tags">
           
-            <a href="/tags/%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8/" rel="tag"># 线程安全</a>
+            <a href="/tags/redis%E5%93%A8%E5%85%B5/" rel="tag"># redis哨兵</a>
           
         </div>
       
@@ -401,15 +479,15 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
+              <a href="/2019/12/12/redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/" rel="next" title="reids主从复制">
+                <i class="fa fa-chevron-left"></i> reids主从复制
+              </a>
+            
           </div>
 
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
-            
-              <a href="/2019/12/09/volatile/" rel="prev" title="volatile">
-                volatile <i class="fa fa-chevron-right"></i>
-              </a>
             
           </div>
         </div>
@@ -545,7 +623,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-JUC多线程及并发包"><span class="nav-number">1.</span> <span class="nav-text">1.    JUC多线程及并发包</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Redis哨兵"><span class="nav-number">1.</span> <span class="nav-text">Redis哨兵</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#哨兵（Sentinel）机制核心作用"><span class="nav-number">1.1.</span> <span class="nav-text">哨兵（Sentinel）机制核心作用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#服务发现和健康检查流程"><span class="nav-number">1.2.</span> <span class="nav-text">服务发现和健康检查流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#故障切换流程"><span class="nav-number">1.3.</span> <span class="nav-text">故障切换流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#7大核心概念"><span class="nav-number">1.4.</span> <span class="nav-text">7大核心概念</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1-哨兵如何知道Redis主从信息"><span class="nav-number">1.4.0.1.</span> <span class="nav-text">1.哨兵如何知道Redis主从信息</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-什么是主观下线"><span class="nav-number">1.4.0.2.</span> <span class="nav-text">2.什么是主观下线</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-客观下线"><span class="nav-number">1.4.0.3.</span> <span class="nav-text">3.客观下线</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#4-哨兵之间如果通信"><span class="nav-number">1.4.0.4.</span> <span class="nav-text">4.哨兵之间如果通信</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#5-哨兵之间的选举机制"><span class="nav-number">1.4.0.5.</span> <span class="nav-text">5.哨兵之间的选举机制</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#6-slave选举方案"><span class="nav-number">1.4.0.6.</span> <span class="nav-text">6.slave选举方案</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#7-最终主从切换过程"><span class="nav-number">1.4.0.7.</span> <span class="nav-text">7.最终主从切换过程</span></a></li></ol></li></ol></li></ol></li></ol></div>
             
 
           </div>

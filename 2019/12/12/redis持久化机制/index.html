@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="redis," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="Redis持久化介绍Redis的数据都存放在内存中，如果没有配置持久化，redis重启后数据就会全丢失，开始持久化后，数据就会存放在磁盘中，当Redis重启后，就可以从磁盘中回复数据。 Redis持久化方式RDB   RDB持久化方式能够在指定的时间间隔对你的数据进行快照存储  RDB方式   客户端直接通过命令BGSAVE或者SAVE来创建一个内存快照  bgsave调用fork来创建一个子进程">
+<meta name="keywords" content="redis">
+<meta property="og:type" content="article">
+<meta property="og:title" content="redis持久化机制">
+<meta property="og:url" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;12&#x2F;redis%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6&#x2F;">
+<meta property="og:site_name" content="小帅砸个人博客">
+<meta property="og:description" content="Redis持久化介绍Redis的数据都存放在内存中，如果没有配置持久化，redis重启后数据就会全丢失，开始持久化后，数据就会存放在磁盘中，当Redis重启后，就可以从磁盘中回复数据。 Redis持久化方式RDB   RDB持久化方式能够在指定的时间间隔对你的数据进行快照存储  RDB方式   客户端直接通过命令BGSAVE或者SAVE来创建一个内存快照  bgsave调用fork来创建一个子进程">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;12&#x2F;redis%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6&#x2F;saveAndBgSave.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;12&#x2F;redis%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6&#x2F;memory-policy.png">
+<meta property="og:updated_time" content="2019-12-13T07:23:44.340Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;12&#x2F;redis%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6&#x2F;saveAndBgSave.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":true,"scrollpercent":true,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://ysimple2210.github.io/2019/12/12/redis持久化机制/"/>
+
+
+
+
+
+  <title>redis持久化机制 | 小帅砸个人博客</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">小帅砸个人博客</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://ysimple2210.github.io/2019/12/12/redis%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Ysimple">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="小帅砸个人博客">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">redis持久化机制</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-12-12T13:06:20+08:00">
+                2019-12-12
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Redis/" itemprop="url" rel="index">
+                    <span itemprop="name">-Redis</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+            <div class="post-wordcount">
+              
+                
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-file-word-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">字数统计&#58;</span>
+                
+                <span title="字数统计">
+                  1.1k
+                </span>
+              
+
+              
+                <span class="post-meta-divider">|</span>
+              
+
+              
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-clock-o"></i>
+                </span>
+                
+                  <span class="post-meta-item-text">阅读时长 &asymp;</span>
+                
+                <span title="阅读时长">
+                  4
+                </span>
+              
+            </div>
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h1 id="Redis持久化介绍"><a href="#Redis持久化介绍" class="headerlink" title="Redis持久化介绍"></a>Redis持久化介绍</h1><p>Redis的数据都存放在内存中，如果没有配置持久化，redis重启后数据就会全丢失，开始持久化后，数据就会存放在磁盘中，当Redis重启后，就可以从磁盘中回复数据。</p>
+<h2 id="Redis持久化方式"><a href="#Redis持久化方式" class="headerlink" title="Redis持久化方式"></a>Redis持久化方式</h2><h3 id="RDB"><a href="#RDB" class="headerlink" title="RDB"></a>RDB</h3><blockquote>
+<p>  RDB持久化方式能够在指定的时间间隔对你的数据进行快照存储</p>
+</blockquote>
+<h4 id="RDB方式"><a href="#RDB方式" class="headerlink" title="RDB方式"></a>RDB方式</h4><blockquote>
+<p>  客户端直接通过命令<font color="red">BGSAVE</font>或者<font color="red">SAVE</font>来创建一个内存快照</p>
+<ul>
+<li>bgsave调用fork来创建一个子进程，子进程负责将快照写入磁盘，而父进程而然继续处理命令。</li>
+<li>SAVE执行SAVE命令过程中，不再响应其它命令</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  配置</p>
+<p>  在redis.conf中调整save配置选项,当在规定的时间内，Redis发生了写操作的个数满足条件会触发发生BESAVE命令</p>
+  <img src="/2019/12/12/redis%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/saveAndBgSave.png">
+</blockquote>
+<h4 id="RDB优缺点"><a href="#RDB优缺点" class="headerlink" title="RDB优缺点"></a>RDB优缺点</h4><table>
+<thead>
+<tr>
+<th align="center">优点</th>
+<th align="center">缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">对性能影响最小</td>
+<td align="center">同步时数据丢失</td>
+</tr>
+<tr>
+<td align="center">RDB文件恢复比AOF要快的多</td>
+<td align="center">如果数据量大且CPU不够强，Redis在fork子进程可能会消耗很长的时间</td>
+</tr>
+</tbody></table>
+<h3 id="AOF"><a href="#AOF" class="headerlink" title="AOF"></a>AOF</h3><blockquote>
+<p>  AOF持久化方式记录每次对服务器<font color="red">写</font>的操作,当服务器重启的时候会重新执行这些命令来恢复原始数据</p>
+</blockquote>
+<h4 id="AOF方式"><a href="#AOF方式" class="headerlink" title="AOF方式"></a>AOF方式</h4><blockquote>
+<p>  开启AOF机制</p>
+<ol>
+<li>appendonly yes</li>
+</ol>
+</blockquote>
+<blockquote>
+<p>  AOF策略调整</p>
+<ol>
+<li>每次有数据修改发生时（appendfsync always）</li>
+<li>每秒钟同步一次,该策略为AOF的缺省策略（appendfsync everysec）</li>
+<li>从不同步，高效但是数据不会被持久化（appendfsync no）</li>
+</ol>
+</blockquote>
+<h4 id="AOF-优缺点"><a href="#AOF-优缺点" class="headerlink" title="AOF 优缺点"></a>AOF 优缺点</h4><table>
+<thead>
+<tr>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>最安全</td>
+<td>文件体积大</td>
+</tr>
+<tr>
+<td>容灾</td>
+<td>性能消耗比RDB大</td>
+</tr>
+<tr>
+<td>易读，可修改</td>
+<td>恢复数据比RDB慢</td>
+</tr>
+</tbody></table>
+<h1 id="Redis内存分配"><a href="#Redis内存分配" class="headerlink" title="Redis内存分配"></a>Redis内存分配</h1><p>不同数据类型的大小限制</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Lists</td>
+<td>个数最大2^32-1个，也就是4294967295（40多亿）</td>
+</tr>
+<tr>
+<td align="left">Sets</td>
+<td>个数最大2^32-1个，也就是4294967295（40多亿）</td>
+</tr>
+<tr>
+<td align="left">Hashes</td>
+<td>个数最大2^32-1个，也就是4294967295（40多亿）</td>
+</tr>
+<tr>
+<td align="left">Strings</td>
+<td>一个value最大可以存储512M</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>  #最大内存控制</p>
+<ul>
+<li>maxmemory 最大内存阈值</li>
+<li>maxmemory-policy 到达阈值的执行策略</li>
+</ul>
+</blockquote>
+<h2 id="内存压缩"><a href="#内存压缩" class="headerlink" title="内存压缩"></a>内存压缩</h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>hash-max-zipmap-entries 512</td>
+<td>配置字段最多512个</td>
+</tr>
+<tr>
+<td>hash-max-zipmap-value 64</td>
+<td>配置value最大为64字节</td>
+</tr>
+<tr>
+<td>list-max-ziplist-entries 512</td>
+<td>配置元素个数最多为512个</td>
+</tr>
+<tr>
+<td>list-max-ziplist-value 64</td>
+<td>配置value最大为64字节</td>
+</tr>
+<tr>
+<td>set-max-intset-entries 512</td>
+<td>配置元素个数最多为512个</td>
+</tr>
+<tr>
+<td>zset-max-ziplist-entries 128</td>
+<td>配置元素个数最多为128个</td>
+</tr>
+<tr>
+<td>zset-max-ziplist-value 64</td>
+<td>配置value最大为64字节</td>
+</tr>
+</tbody></table>
+<h2 id="过期数据的处理策略（Redis内存满了会怎么样？）"><a href="#过期数据的处理策略（Redis内存满了会怎么样？）" class="headerlink" title="过期数据的处理策略（Redis内存满了会怎么样？）"></a>过期数据的处理策略（Redis内存满了会怎么样？）</h2><h3 id="1-主动处理"><a href="#1-主动处理" class="headerlink" title="1.主动处理"></a>1.主动处理</h3><blockquote>
+<p>  Redis主动触发检测Key是否过期，每秒执行10次。过程如下：</p>
+<ol>
+<li>从具有相关过期的密钥中测试20个随机密钥</li>
+<li>删除找到的所有密钥已过期</li>
+<li>如果超过25%的密钥已过期，从步骤1重新开始</li>
+</ol>
+</blockquote>
+<h3 id="2-被动处理"><a href="#2-被动处理" class="headerlink" title="2.被动处理"></a>2.被动处理</h3><blockquote>
+<p>  1.每次访问key的时候，发现超时后被动过期，清理掉</p>
+</blockquote>
+<h2 id="数据恢复阶段过期数据的处理策略"><a href="#数据恢复阶段过期数据的处理策略" class="headerlink" title="数据恢复阶段过期数据的处理策略"></a>数据恢复阶段过期数据的处理策略</h2><h3 id="RDB方式-1"><a href="#RDB方式-1" class="headerlink" title="RDB方式"></a>RDB方式</h3><blockquote>
+<ol>
+<li>过期的Key不会被持久化到文件中</li>
+<li>载入时过期的key，会通过redis的主动和被动方式清理掉</li>
+</ol>
+</blockquote>
+<h3 id="AOF方式-1"><a href="#AOF方式-1" class="headerlink" title="AOF方式"></a>AOF方式</h3><blockquote>
+<p>  当Redis使用AOD方式持久化时，每次遇到过期的key,Redis会追加一条DEL命令到AOF文件</p>
+<p>  也就是：当我们顺序载入执行AOF命令文件就会删除过期的键</p>
+</blockquote>
+<h2 id="Redis内存回收策略"><a href="#Redis内存回收策略" class="headerlink" title="Redis内存回收策略"></a>Redis内存回收策略</h2><blockquote>
+<p>  配置文件中设置：maxmemory-policy noeviction</p>
+<p>  动态调整：config set maxmemory-policy noeviction</p>
+</blockquote>
+<img src="/2019/12/12/redis%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/memory-policy.png">
+
+<h3 id="LRU算法"><a href="#LRU算法" class="headerlink" title="LRU算法"></a>LRU算法</h3><blockquote>
+<p>  LRU(Least recentyl used ，最近最少使用)：根据数据的历史访问记录来进行淘汰数据</p>
+<ul>
+<li>核心思想：如果数据最近被访问过，那么将来被访问的几率也更高</li>
+<li>注意：Redis的LRU算法并非完整的实现,完整的LRU实现是因为需要太多的内存</li>
+<li>方法：通过对少量keys进行取样（50%），然后挥手其中一个最好的key</li>
+<li>配置方式：maxmemory-samples 5</li>
+</ul>
+</blockquote>
+<h3 id="LFU算法"><a href="#LFU算法" class="headerlink" title="LFU算法"></a>LFU算法</h3><blockquote>
+<p>LFU（Least Frequently Used）根据数据的历史访问频率来淘汰数据</p>
+<ul>
+<li>核心思想：如果数据过去被访问多次，那么将来被访问的频率也更高</li>
+<li>Redis实现的是<font color="red">近似</font>的实现，每次对ke y进行访问时，用基于<font color="red">概率的对数计数器</font>来记录访问次数，同时这个计数器会随着时间推移而减小。</li>
+<li>启用LFU算法后，可以使用热点数据分析功能（redis-cli –hotkeys）</li>
+</ul>
+</blockquote>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/redis/" rel="tag"># redis</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/12/09/volatile/" rel="next" title="volatile">
+                <i class="fa fa-chevron-left"></i> volatile
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/12/12/redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/" rel="prev" title="reids主从复制">
+                reids主从复制 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image"
+                src="/images/touxiang.png"
+                alt="Ysimple" />
+            
+              <p class="site-author-name" itemprop="name">Ysimple</p>
+              <p class="site-description motion-element" itemprop="description">一个程序员的私密之地</p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/%7C%7C%20archive">
+              
+                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/">
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/">
+                  <span class="site-state-item-count">5</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Redis持久化介绍"><span class="nav-number">1.</span> <span class="nav-text">Redis持久化介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Redis持久化方式"><span class="nav-number">1.1.</span> <span class="nav-text">Redis持久化方式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#RDB"><span class="nav-number">1.1.1.</span> <span class="nav-text">RDB</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#RDB方式"><span class="nav-number">1.1.1.1.</span> <span class="nav-text">RDB方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#RDB优缺点"><span class="nav-number">1.1.1.2.</span> <span class="nav-text">RDB优缺点</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AOF"><span class="nav-number">1.1.2.</span> <span class="nav-text">AOF</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#AOF方式"><span class="nav-number">1.1.2.1.</span> <span class="nav-text">AOF方式</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#AOF-优缺点"><span class="nav-number">1.1.2.2.</span> <span class="nav-text">AOF 优缺点</span></a></li></ol></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Redis内存分配"><span class="nav-number">2.</span> <span class="nav-text">Redis内存分配</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#内存压缩"><span class="nav-number">2.1.</span> <span class="nav-text">内存压缩</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#过期数据的处理策略（Redis内存满了会怎么样？）"><span class="nav-number">2.2.</span> <span class="nav-text">过期数据的处理策略（Redis内存满了会怎么样？）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-主动处理"><span class="nav-number">2.2.1.</span> <span class="nav-text">1.主动处理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-被动处理"><span class="nav-number">2.2.2.</span> <span class="nav-text">2.被动处理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#数据恢复阶段过期数据的处理策略"><span class="nav-number">2.3.</span> <span class="nav-text">数据恢复阶段过期数据的处理策略</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#RDB方式-1"><span class="nav-number">2.3.1.</span> <span class="nav-text">RDB方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#AOF方式-1"><span class="nav-number">2.3.2.</span> <span class="nav-text">AOF方式</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Redis内存回收策略"><span class="nav-number">2.4.</span> <span class="nav-text">Redis内存回收策略</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#LRU算法"><span class="nav-number">2.4.1.</span> <span class="nav-text">LRU算法</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LFU算法"><span class="nav-number">2.4.2.</span> <span class="nav-text">LFU算法</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+        <div class="back-to-top">
+          <i class="fa fa-arrow-up"></i>
+          
+            <span id="scrollpercent"><span>0</span>%</span>
+          
+        </div>
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Ysimple</span>
+
+  
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-area-chart"></i>
+    </span>
+    
+      <span class="post-meta-item-text">Site words total count&#58;</span>
+    
+    <span title="Site words total count">3.3k</span>
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Pisces</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+<script src="/live2dw/lib/L2Dwidget.min.js?094cbace49a39548bed64abff5988b05"></script><script>L2Dwidget.init({"pluginRootPath":"live2dw/","pluginJsPath":"lib/","pluginModelPath":"assets/","tagMode":false,"log":false,"model":{"jsonPath":"/live2dw/assets/hibiki.model.json"},"display":{"position":"right","width":150,"height":300},"mobile":{"show":true}});</script></body>
+</html>

@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="线程安全," />
+  <meta name="keywords" content="主从复制," />
 
 
 
@@ -79,16 +79,20 @@
 
 
 
-<meta name="description" content="1.    JUC多线程及并发包">
-<meta name="keywords" content="线程安全">
+<meta name="description" content="Redis主从复制介绍什么是主从复制    为什么使用主从复制  Redis-server 单点故障 单节点QPS有限   主从复制应用场景分析  读写分离场景，规避Redis单机瓶颈 故障切换，Master出问提后还有slave节点可以使用   搭建主从复制主Redis Server 以普通模式启动，主要是启动从服务的方式 1.第一种方式：命令行 连接需要实现从节点的Redis,执行命令：sla">
+<meta name="keywords" content="主从复制">
 <meta property="og:type" content="article">
-<meta property="og:title" content="多线程详解">
-<meta property="og:url" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;09&#x2F;%E5%A4%9A%E7%BA%BF%E7%A8%8B%E8%AF%A6%E8%A7%A3&#x2F;">
+<meta property="og:title" content="reids主从复制">
+<meta property="og:url" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;12&#x2F;redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6&#x2F;">
 <meta property="og:site_name" content="小帅砸个人博客">
-<meta property="og:description" content="1.    JUC多线程及并发包">
+<meta property="og:description" content="Redis主从复制介绍什么是主从复制    为什么使用主从复制  Redis-server 单点故障 单节点QPS有限   主从复制应用场景分析  读写分离场景，规避Redis单机瓶颈 故障切换，Master出问提后还有slave节点可以使用   搭建主从复制主Redis Server 以普通模式启动，主要是启动从服务的方式 1.第一种方式：命令行 连接需要实现从节点的Redis,执行命令：sla">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-12-09T06:47:25.508Z">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;12&#x2F;redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6&#x2F;redis_copy.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;12&#x2F;redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6&#x2F;redisHexin.png">
+<meta property="og:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;12&#x2F;redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6&#x2F;redis2.png">
+<meta property="og:updated_time" content="2019-12-13T07:22:22.441Z">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https:&#x2F;&#x2F;ysimple2210.github.io&#x2F;2019&#x2F;12&#x2F;12&#x2F;redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6&#x2F;redis_copy.png">
 
 
 
@@ -118,13 +122,13 @@
 
 
 
-  <link rel="canonical" href="https://ysimple2210.github.io/2019/12/09/多线程详解/"/>
+  <link rel="canonical" href="https://ysimple2210.github.io/2019/12/12/redis主从复制/"/>
 
 
 
 
 
-  <title>多线程详解 | 小帅砸个人博客</title>
+  <title>reids主从复制 | 小帅砸个人博客</title>
   
 
 
@@ -251,7 +255,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://ysimple2210.github.io/2019/12/09/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E8%AF%A6%E8%A7%A3/">
+    <link itemprop="mainEntityOfPage" href="https://ysimple2210.github.io/2019/12/12/redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="Ysimple">
@@ -268,7 +272,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">多线程详解</h1>
+          <h1 class="post-title" itemprop="name headline">reids主从复制</h1>
         
 
         <div class="post-meta">
@@ -280,8 +284,8 @@
               
                 <span class="post-meta-item-text">发表于</span>
               
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-12-09T10:02:40+08:00">
-                2019-12-09
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-12-12T22:21:12+08:00">
+                2019-12-12
               </time>
             
 
@@ -303,8 +307,8 @@
               
               
                 <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/Java/" itemprop="url" rel="index">
-                    <span itemprop="name">-Java</span>
+                  <a href="/categories/Redis/" itemprop="url" rel="index">
+                    <span itemprop="name">-Redis</span>
                   </a>
                 </span>
 
@@ -334,7 +338,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  9
+                  781
                 </span>
               
 
@@ -350,7 +354,7 @@
                   <span class="post-meta-item-text">阅读时长 &asymp;</span>
                 
                 <span title="阅读时长">
-                  1
+                  2
                 </span>
               
             </div>
@@ -371,7 +375,111 @@
       
 
       
-        <h1 id="1-JUC多线程及并发包"><a href="#1-JUC多线程及并发包" class="headerlink" title="1.    JUC多线程及并发包"></a>1.    JUC多线程及并发包</h1>
+        <h1 id="Redis主从复制介绍"><a href="#Redis主从复制介绍" class="headerlink" title="Redis主从复制介绍"></a>Redis主从复制介绍</h1><h2 id="什么是主从复制"><a href="#什么是主从复制" class="headerlink" title="什么是主从复制"></a>什么是主从复制</h2><img src="/2019/12/12/redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/redis_copy.png">
+
+
+
+<h2 id="为什么使用主从复制"><a href="#为什么使用主从复制" class="headerlink" title="为什么使用主从复制"></a>为什么使用主从复制</h2><blockquote>
+<ul>
+<li>Redis-server 单点故障</li>
+<li>单节点QPS有限</li>
+</ul>
+</blockquote>
+<h2 id="主从复制应用场景分析"><a href="#主从复制应用场景分析" class="headerlink" title="主从复制应用场景分析"></a>主从复制应用场景分析</h2><blockquote>
+<ul>
+<li>读写分离场景，规避Redis单机瓶颈</li>
+<li>故障切换，Master出问提后还有slave节点可以使用</li>
+</ul>
+</blockquote>
+<h1 id="搭建主从复制"><a href="#搭建主从复制" class="headerlink" title="搭建主从复制"></a>搭建主从复制</h1><p>主Redis Server 以普通模式启动，主要是启动从服务的方式</p>
+<h2 id="1-第一种方式：命令行"><a href="#1-第一种方式：命令行" class="headerlink" title="1.第一种方式：命令行"></a>1.第一种方式：命令行</h2><blockquote>
+<p>连接需要实现从节点的Redis,执行命令：slaveof [ip] [port]</p>
+</blockquote>
+<h2 id="2-第二种方式：redis-conf配置方式"><a href="#2-第二种方式：redis-conf配置方式" class="headerlink" title="2.第二种方式：redis.conf配置方式"></a>2.第二种方式：redis.conf配置方式</h2><blockquote>
+<p>配置文件中增加</p>
+<p>slaveof [ip] [port]</p>
+<p>从服务器是否只读（默认yes）</p>
+<p>slave-read-only yes</p>
+</blockquote>
+<h2 id="退出主从集群的方式"><a href="#退出主从集群的方式" class="headerlink" title="退出主从集群的方式"></a>退出主从集群的方式</h2><blockquote>
+<p>Slaveof no one</p>
+</blockquote>
+<p>Redis命令: info 可查看Redis信息 </p>
+<p>​        info Replication</p>
+<p>新版主从复制 使用 ：</p>
+<p>​        replicaof [ip] [port]</p>
+<h1 id="主从复制流程"><a href="#主从复制流程" class="headerlink" title="主从复制流程"></a>主从复制流程</h1><blockquote>
+<ol>
+<li>从服务器通过<font color="red">psync</font>命令发送服务器已有的同步进度（同步源ID/同步进度offset）</li>
+<li>master收到请求，同步源为当前master，则更具偏移量增量同步</li>
+<li>同步源非当前master,则进入全量同步：master生成rdb,传输到slave,加载到slave内存</li>
+</ol>
+</blockquote>
+<h2 id="核心知识"><a href="#核心知识" class="headerlink" title="核心知识"></a>核心知识</h2><blockquote>
+<ul>
+<li>Redis默认使用一步复制，slave和master之间一步地确认处理的数据量</li>
+<li>一个Master可以拥有多个Slave</li>
+<li>slave可以接受其他slave,一个slave可以有下级sub slave</li>
+<li>主从同步过程在master侧是非阻塞的</li>
+<li>slave初次同步需要删除旧数据，加载新数据，会阻塞到来的请求</li>
+</ul>
+</blockquote>
+<img src="/2019/12/12/redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/redisHexin.png">
+
+
+
+<h1 id="主从复制应用场景"><a href="#主从复制应用场景" class="headerlink" title="主从复制应用场景"></a>主从复制应用场景</h1><blockquote>
+<ul>
+<li>主从复制可以用来支持读写分离</li>
+<li>slave设置为只读，可以用在数据安全的场景下</li>
+<li>可以使用主从来避免master持久化造成的开销。mater关闭持久化，slave配置为不定期保存或者启用AOF(<a href="http://www.baidu.com" target="_blank" rel="noopener">可以看另一个文章</a>)</li>
+<li>注意：重新启动master程序将从一个空数据集开始，如果一个slave试图与它同步，那么这个slave也会被清空</li>
+</ul>
+</blockquote>
+<img src="/2019/12/12/redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/redis2.png">
+
+<h1 id="主从复制的注意事项"><a href="#主从复制的注意事项" class="headerlink" title="主从复制的注意事项"></a>主从复制的注意事项</h1><blockquote>
+<p>  读写分离的场景</p>
+<ul>
+<li>数据复制延迟导致读到的数据过期或者读不到数据（网络原因、slave阻塞）</li>
+<li>从节点故障（多个client如何迁移？）</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  全量复制的情况下</p>
+<ul>
+<li>第一次建立主从关系或者runid不匹配会导致全量复制</li>
+<li>故障转移的时候也会出现全量复制</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  复制风暴</p>
+<ul>
+<li>master故障重启后，如果slave节点较多。所有的slave都要复制，对服务器的性能，网络的压力都有很大影响。</li>
+<li>一个服务器上部署多台master</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  写能力有限</p>
+<ul>
+<li>主从复制还是只有一台master,写能力有限</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  master故障的情况下</p>
+<ul>
+<li>如果master无持久化，slave开启持久化来保留数据的场景，不建议配置redis重启</li>
+<li>如果redis自动重启，master启动后，无备份数据，可能导致集群数据丢失。</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  带有效期的key</p>
+<ul>
+<li>slave不会让key过期，而是等待master 让key过期</li>
+<li>在LUA脚本执行期间。不执行任何key过期操作。</li>
+</ul>
+</blockquote>
+
       
     </div>
     
@@ -388,7 +496,7 @@
       
         <div class="post-tags">
           
-            <a href="/tags/%E7%BA%BF%E7%A8%8B%E5%AE%89%E5%85%A8/" rel="tag"># 线程安全</a>
+            <a href="/tags/%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/" rel="tag"># 主从复制</a>
           
         </div>
       
@@ -401,14 +509,18 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
+              <a href="/2019/12/12/redis%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/" rel="next" title="redis持久化机制">
+                <i class="fa fa-chevron-left"></i> redis持久化机制
+              </a>
+            
           </div>
 
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/2019/12/09/volatile/" rel="prev" title="volatile">
-                volatile <i class="fa fa-chevron-right"></i>
+              <a href="/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/" rel="prev" title="redis哨兵高可用">
+                redis哨兵高可用 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -545,7 +657,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#1-JUC多线程及并发包"><span class="nav-number">1.</span> <span class="nav-text">1.    JUC多线程及并发包</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Redis主从复制介绍"><span class="nav-number">1.</span> <span class="nav-text">Redis主从复制介绍</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是主从复制"><span class="nav-number">1.1.</span> <span class="nav-text">什么是主从复制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#为什么使用主从复制"><span class="nav-number">1.2.</span> <span class="nav-text">为什么使用主从复制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#主从复制应用场景分析"><span class="nav-number">1.3.</span> <span class="nav-text">主从复制应用场景分析</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#搭建主从复制"><span class="nav-number">2.</span> <span class="nav-text">搭建主从复制</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-第一种方式：命令行"><span class="nav-number">2.1.</span> <span class="nav-text">1.第一种方式：命令行</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-第二种方式：redis-conf配置方式"><span class="nav-number">2.2.</span> <span class="nav-text">2.第二种方式：redis.conf配置方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#退出主从集群的方式"><span class="nav-number">2.3.</span> <span class="nav-text">退出主从集群的方式</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#主从复制流程"><span class="nav-number">3.</span> <span class="nav-text">主从复制流程</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#核心知识"><span class="nav-number">3.1.</span> <span class="nav-text">核心知识</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#主从复制应用场景"><span class="nav-number">4.</span> <span class="nav-text">主从复制应用场景</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#主从复制的注意事项"><span class="nav-number">5.</span> <span class="nav-text">主从复制的注意事项</span></a></li></ol></div>
             
 
           </div>
