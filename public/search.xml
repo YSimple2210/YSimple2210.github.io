@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>redis哨兵高可用</title>
+    <url>/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/</url>
+    <content><![CDATA[<h1 id="Redis哨兵"><a href="#Redis哨兵" class="headerlink" title="Redis哨兵"></a>Redis哨兵</h1><p>如果选择master / 哨兵的集群</p>
+<h2 id="哨兵（Sentinel）机制核心作用"><a href="#哨兵（Sentinel）机制核心作用" class="headerlink" title="哨兵（Sentinel）机制核心作用"></a>哨兵（Sentinel）机制核心作用</h2><img src="/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/1.png">
+
+<h2 id="服务发现和健康检查流程"><a href="#服务发现和健康检查流程" class="headerlink" title="服务发现和健康检查流程"></a>服务发现和健康检查流程</h2><img src="/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/health.png">
+
+<h2 id="故障切换流程"><a href="#故障切换流程" class="headerlink" title="故障切换流程"></a>故障切换流程</h2><img src="/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/qiehuan.png">
+
+<h2 id="7大核心概念"><a href="#7大核心概念" class="headerlink" title="7大核心概念"></a>7大核心概念</h2><blockquote>
+<ol>
+<li>哨兵如何知道Redis主从信息（自动发现机制 [info replication]）</li>
+<li>什么是master主观下线</li>
+<li>什么是客观下线</li>
+<li>哨兵之间如何通信（哨兵之间的自动发现）</li>
+<li>哪个哨兵负责故障转移（哨兵领导选举机制）</li>
+<li>slave选举机制</li>
+<li>最终主从切换过程</li>
+</ol>
+</blockquote>
+<h4 id="1-哨兵如何知道Redis主从信息"><a href="#1-哨兵如何知道Redis主从信息" class="headerlink" title="1.哨兵如何知道Redis主从信息"></a>1.哨兵如何知道Redis主从信息</h4><blockquote>
+<p>  哨兵配置文件中保存着主从集群中master的信息，可以通过info命令，进行主从信息自动发现</p>
+</blockquote>
+<h4 id="2-什么是主观下线"><a href="#2-什么是主观下线" class="headerlink" title="2.什么是主观下线"></a>2.什么是主观下线</h4><blockquote>
+<p>  主观下线：单个哨兵自身认为redis实例已经不能提供服务</p>
+<p>  检测机制：哨兵向redis发送ping命令， + PONG、-LOADNG、-MASTERDOWN这三种情况下认为是正常，其它回复均为无效。</p>
+<p>  对应的配置文件中内容：sentinel down-after-milliseconds mymaster 1000</p>
+</blockquote>
+<h4 id="3-客观下线"><a href="#3-客观下线" class="headerlink" title="3.客观下线"></a>3.客观下线</h4><img src="/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/客观下线.png">
+
+<blockquote>
+<p>  客观下线：一定数量值的哨兵认为master已经下线</p>
+<p>  检测机制：当哨兵主观认为master下线后，则会通过SENTINEL is-master-down-by-addr 命令，询问其它哨兵是否认为master下线。如果达成共识（达到quorum个数），就会认为master节点客观下线。开始故障转移</p>
+<p>  对应配置文件内容：sentinel monitor mymaster [ip] [quorum]</p>
+</blockquote>
+<h4 id="4-哨兵之间如果通信"><a href="#4-哨兵之间如果通信" class="headerlink" title="4.哨兵之间如果通信"></a>4.哨兵之间如果通信</h4><img src="/2019/12/13/redis%E5%93%A8%E5%85%B5%E9%AB%98%E5%8F%AF%E7%94%A8/哨兵通信.png">
+
+<blockquote>
+<p>  1.哨兵之间的自动发现（注册订阅）</p>
+</blockquote>
+<h4 id="5-哨兵之间的选举机制"><a href="#5-哨兵之间的选举机制" class="headerlink" title="5.哨兵之间的选举机制"></a>5.哨兵之间的选举机制</h4><blockquote>
+<p>基于Raft算法实现的选举机制：</p>
+<ol>
+<li>拉票阶段：每个哨兵节点希望自己成为领导者</li>
+<li>sentinel节点收到拉票命令后，如果没有收到或同意其它sentinel节点的请求，就同意该sentinel节点的请求（每个sentinel只持有一个同意票数）</li>
+<li>如果sentinel节点发现自己的票数已经超过一半的数值，那么它就成为领导者，去执行故障转移</li>
+<li>投票结束后、如果超过failover-timeout的时间内，没有进行实际的故障转移，则重新拉票选举。</li>
+</ol>
+</blockquote>
+<h4 id="6-slave选举方案"><a href="#6-slave选举方案" class="headerlink" title="6.slave选举方案"></a>6.slave选举方案</h4><p>按顺序依次筛选</p>
+<blockquote>
+<p>  slave节点状态，非S_DOWN,O_DOWN,DISCONNECTED</p>
+<p>  判断规则：（down-after-milliseconds * 10） + milliseconds_snice_master_is_in_SDOWN_state</p>
+<p>  SENTINEL slave mymaster</p>
+</blockquote>
+<blockquote>
+<p>  优先级<br>  redis.conf中的一个配置：slave-priority 值越小，优先级越高</p>
+</blockquote>
+<blockquote>
+<p>  数据同步情况</p>
+<p>  Replication offset processed</p>
+</blockquote>
+<blockquote>
+<p>  最小的run id</p>
+<p>  run id比较方案：字典顺序 ,ASCII码</p>
+</blockquote>
+<h4 id="7-最终主从切换过程"><a href="#7-最终主从切换过程" class="headerlink" title="7.最终主从切换过程"></a>7.最终主从切换过程</h4><blockquote>
+<p>  针对即将成为master的slave节点。将其撤出主从集群</p>
+<p>  自动执行：slaveof no one </p>
+</blockquote>
+<blockquote>
+<p>   针对其它slave节点，使他们成为新的master的从属</p>
+<p>  自动执行：slaveof new_master_host new master_port</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>-Redis</category>
+      </categories>
+      <tags>
+        <tag>redis哨兵</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>reids主从复制</title>
+    <url>/2019/12/12/redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/</url>
+    <content><![CDATA[<h1 id="Redis主从复制介绍"><a href="#Redis主从复制介绍" class="headerlink" title="Redis主从复制介绍"></a>Redis主从复制介绍</h1><h2 id="什么是主从复制"><a href="#什么是主从复制" class="headerlink" title="什么是主从复制"></a>什么是主从复制</h2><img src="/2019/12/12/redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/redis_copy.png">
+
+
+
+<h2 id="为什么使用主从复制"><a href="#为什么使用主从复制" class="headerlink" title="为什么使用主从复制"></a>为什么使用主从复制</h2><blockquote>
+<ul>
+<li>Redis-server 单点故障</li>
+<li>单节点QPS有限</li>
+</ul>
+</blockquote>
+<h2 id="主从复制应用场景分析"><a href="#主从复制应用场景分析" class="headerlink" title="主从复制应用场景分析"></a>主从复制应用场景分析</h2><blockquote>
+<ul>
+<li>读写分离场景，规避Redis单机瓶颈</li>
+<li>故障切换，Master出问提后还有slave节点可以使用</li>
+</ul>
+</blockquote>
+<h1 id="搭建主从复制"><a href="#搭建主从复制" class="headerlink" title="搭建主从复制"></a>搭建主从复制</h1><p>主Redis Server 以普通模式启动，主要是启动从服务的方式</p>
+<h2 id="1-第一种方式：命令行"><a href="#1-第一种方式：命令行" class="headerlink" title="1.第一种方式：命令行"></a>1.第一种方式：命令行</h2><blockquote>
+<p>连接需要实现从节点的Redis,执行命令：slaveof [ip] [port]</p>
+</blockquote>
+<h2 id="2-第二种方式：redis-conf配置方式"><a href="#2-第二种方式：redis-conf配置方式" class="headerlink" title="2.第二种方式：redis.conf配置方式"></a>2.第二种方式：redis.conf配置方式</h2><blockquote>
+<p>配置文件中增加</p>
+<p>slaveof [ip] [port]</p>
+<p>从服务器是否只读（默认yes）</p>
+<p>slave-read-only yes</p>
+</blockquote>
+<h2 id="退出主从集群的方式"><a href="#退出主从集群的方式" class="headerlink" title="退出主从集群的方式"></a>退出主从集群的方式</h2><blockquote>
+<p>Slaveof no one</p>
+</blockquote>
+<p>Redis命令: info 可查看Redis信息 </p>
+<p>​        info Replication</p>
+<p>新版主从复制 使用 ：</p>
+<p>​        replicaof [ip] [port]</p>
+<h1 id="主从复制流程"><a href="#主从复制流程" class="headerlink" title="主从复制流程"></a>主从复制流程</h1><blockquote>
+<ol>
+<li>从服务器通过<font color="red">psync</font>命令发送服务器已有的同步进度（同步源ID/同步进度offset）</li>
+<li>master收到请求，同步源为当前master，则更具偏移量增量同步</li>
+<li>同步源非当前master,则进入全量同步：master生成rdb,传输到slave,加载到slave内存</li>
+</ol>
+</blockquote>
+<h2 id="核心知识"><a href="#核心知识" class="headerlink" title="核心知识"></a>核心知识</h2><blockquote>
+<ul>
+<li>Redis默认使用一步复制，slave和master之间一步地确认处理的数据量</li>
+<li>一个Master可以拥有多个Slave</li>
+<li>slave可以接受其他slave,一个slave可以有下级sub slave</li>
+<li>主从同步过程在master侧是非阻塞的</li>
+<li>slave初次同步需要删除旧数据，加载新数据，会阻塞到来的请求</li>
+</ul>
+</blockquote>
+<img src="/2019/12/12/redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/redisHexin.png">
+
+
+
+<h1 id="主从复制应用场景"><a href="#主从复制应用场景" class="headerlink" title="主从复制应用场景"></a>主从复制应用场景</h1><blockquote>
+<ul>
+<li>主从复制可以用来支持读写分离</li>
+<li>slave设置为只读，可以用在数据安全的场景下</li>
+<li>可以使用主从来避免master持久化造成的开销。mater关闭持久化，slave配置为不定期保存或者启用AOF(<a href="http://www.baidu.com" target="_blank" rel="noopener">可以看另一个文章</a>)</li>
+<li>注意：重新启动master程序将从一个空数据集开始，如果一个slave试图与它同步，那么这个slave也会被清空</li>
+</ul>
+</blockquote>
+<img src="/2019/12/12/redis%E4%B8%BB%E4%BB%8E%E5%A4%8D%E5%88%B6/redis2.png">
+
+<h1 id="主从复制的注意事项"><a href="#主从复制的注意事项" class="headerlink" title="主从复制的注意事项"></a>主从复制的注意事项</h1><blockquote>
+<p>  读写分离的场景</p>
+<ul>
+<li>数据复制延迟导致读到的数据过期或者读不到数据（网络原因、slave阻塞）</li>
+<li>从节点故障（多个client如何迁移？）</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  全量复制的情况下</p>
+<ul>
+<li>第一次建立主从关系或者runid不匹配会导致全量复制</li>
+<li>故障转移的时候也会出现全量复制</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  复制风暴</p>
+<ul>
+<li>master故障重启后，如果slave节点较多。所有的slave都要复制，对服务器的性能，网络的压力都有很大影响。</li>
+<li>一个服务器上部署多台master</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  写能力有限</p>
+<ul>
+<li>主从复制还是只有一台master,写能力有限</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  master故障的情况下</p>
+<ul>
+<li>如果master无持久化，slave开启持久化来保留数据的场景，不建议配置redis重启</li>
+<li>如果redis自动重启，master启动后，无备份数据，可能导致集群数据丢失。</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  带有效期的key</p>
+<ul>
+<li>slave不会让key过期，而是等待master 让key过期</li>
+<li>在LUA脚本执行期间。不执行任何key过期操作。</li>
+</ul>
+</blockquote>
+]]></content>
+      <categories>
+        <category>-Redis</category>
+      </categories>
+      <tags>
+        <tag>主从复制</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>redis持久化机制</title>
+    <url>/2019/12/12/redis%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/</url>
+    <content><![CDATA[<h1 id="Redis持久化介绍"><a href="#Redis持久化介绍" class="headerlink" title="Redis持久化介绍"></a>Redis持久化介绍</h1><p>Redis的数据都存放在内存中，如果没有配置持久化，redis重启后数据就会全丢失，开始持久化后，数据就会存放在磁盘中，当Redis重启后，就可以从磁盘中回复数据。</p>
+<h2 id="Redis持久化方式"><a href="#Redis持久化方式" class="headerlink" title="Redis持久化方式"></a>Redis持久化方式</h2><h3 id="RDB"><a href="#RDB" class="headerlink" title="RDB"></a>RDB</h3><blockquote>
+<p>  RDB持久化方式能够在指定的时间间隔对你的数据进行快照存储</p>
+</blockquote>
+<h4 id="RDB方式"><a href="#RDB方式" class="headerlink" title="RDB方式"></a>RDB方式</h4><blockquote>
+<p>  客户端直接通过命令<font color="red">BGSAVE</font>或者<font color="red">SAVE</font>来创建一个内存快照</p>
+<ul>
+<li>bgsave调用fork来创建一个子进程，子进程负责将快照写入磁盘，而父进程而然继续处理命令。</li>
+<li>SAVE执行SAVE命令过程中，不再响应其它命令</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>  配置</p>
+<p>  在redis.conf中调整save配置选项,当在规定的时间内，Redis发生了写操作的个数满足条件会触发发生BESAVE命令</p>
+  <img src="/2019/12/12/redis%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/saveAndBgSave.png">
+</blockquote>
+<h4 id="RDB优缺点"><a href="#RDB优缺点" class="headerlink" title="RDB优缺点"></a>RDB优缺点</h4><table>
+<thead>
+<tr>
+<th align="center">优点</th>
+<th align="center">缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">对性能影响最小</td>
+<td align="center">同步时数据丢失</td>
+</tr>
+<tr>
+<td align="center">RDB文件恢复比AOF要快的多</td>
+<td align="center">如果数据量大且CPU不够强，Redis在fork子进程可能会消耗很长的时间</td>
+</tr>
+</tbody></table>
+<h3 id="AOF"><a href="#AOF" class="headerlink" title="AOF"></a>AOF</h3><blockquote>
+<p>  AOF持久化方式记录每次对服务器<font color="red">写</font>的操作,当服务器重启的时候会重新执行这些命令来恢复原始数据</p>
+</blockquote>
+<h4 id="AOF方式"><a href="#AOF方式" class="headerlink" title="AOF方式"></a>AOF方式</h4><blockquote>
+<p>  开启AOF机制</p>
+<ol>
+<li>appendonly yes</li>
+</ol>
+</blockquote>
+<blockquote>
+<p>  AOF策略调整</p>
+<ol>
+<li>每次有数据修改发生时（appendfsync always）</li>
+<li>每秒钟同步一次,该策略为AOF的缺省策略（appendfsync everysec）</li>
+<li>从不同步，高效但是数据不会被持久化（appendfsync no）</li>
+</ol>
+</blockquote>
+<h4 id="AOF-优缺点"><a href="#AOF-优缺点" class="headerlink" title="AOF 优缺点"></a>AOF 优缺点</h4><table>
+<thead>
+<tr>
+<th>优点</th>
+<th>缺点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>最安全</td>
+<td>文件体积大</td>
+</tr>
+<tr>
+<td>容灾</td>
+<td>性能消耗比RDB大</td>
+</tr>
+<tr>
+<td>易读，可修改</td>
+<td>恢复数据比RDB慢</td>
+</tr>
+</tbody></table>
+<h1 id="Redis内存分配"><a href="#Redis内存分配" class="headerlink" title="Redis内存分配"></a>Redis内存分配</h1><p>不同数据类型的大小限制</p>
+<table>
+<thead>
+<tr>
+<th align="left"></th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Lists</td>
+<td>个数最大2^32-1个，也就是4294967295（40多亿）</td>
+</tr>
+<tr>
+<td align="left">Sets</td>
+<td>个数最大2^32-1个，也就是4294967295（40多亿）</td>
+</tr>
+<tr>
+<td align="left">Hashes</td>
+<td>个数最大2^32-1个，也就是4294967295（40多亿）</td>
+</tr>
+<tr>
+<td align="left">Strings</td>
+<td>一个value最大可以存储512M</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>  #最大内存控制</p>
+<ul>
+<li>maxmemory 最大内存阈值</li>
+<li>maxmemory-policy 到达阈值的执行策略</li>
+</ul>
+</blockquote>
+<h2 id="内存压缩"><a href="#内存压缩" class="headerlink" title="内存压缩"></a>内存压缩</h2><table>
+<thead>
+<tr>
+<th>命令</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>hash-max-zipmap-entries 512</td>
+<td>配置字段最多512个</td>
+</tr>
+<tr>
+<td>hash-max-zipmap-value 64</td>
+<td>配置value最大为64字节</td>
+</tr>
+<tr>
+<td>list-max-ziplist-entries 512</td>
+<td>配置元素个数最多为512个</td>
+</tr>
+<tr>
+<td>list-max-ziplist-value 64</td>
+<td>配置value最大为64字节</td>
+</tr>
+<tr>
+<td>set-max-intset-entries 512</td>
+<td>配置元素个数最多为512个</td>
+</tr>
+<tr>
+<td>zset-max-ziplist-entries 128</td>
+<td>配置元素个数最多为128个</td>
+</tr>
+<tr>
+<td>zset-max-ziplist-value 64</td>
+<td>配置value最大为64字节</td>
+</tr>
+</tbody></table>
+<h2 id="过期数据的处理策略（Redis内存满了会怎么样？）"><a href="#过期数据的处理策略（Redis内存满了会怎么样？）" class="headerlink" title="过期数据的处理策略（Redis内存满了会怎么样？）"></a>过期数据的处理策略（Redis内存满了会怎么样？）</h2><h3 id="1-主动处理"><a href="#1-主动处理" class="headerlink" title="1.主动处理"></a>1.主动处理</h3><blockquote>
+<p>  Redis主动触发检测Key是否过期，每秒执行10次。过程如下：</p>
+<ol>
+<li>从具有相关过期的密钥中测试20个随机密钥</li>
+<li>删除找到的所有密钥已过期</li>
+<li>如果超过25%的密钥已过期，从步骤1重新开始</li>
+</ol>
+</blockquote>
+<h3 id="2-被动处理"><a href="#2-被动处理" class="headerlink" title="2.被动处理"></a>2.被动处理</h3><blockquote>
+<p>  1.每次访问key的时候，发现超时后被动过期，清理掉</p>
+</blockquote>
+<h2 id="数据恢复阶段过期数据的处理策略"><a href="#数据恢复阶段过期数据的处理策略" class="headerlink" title="数据恢复阶段过期数据的处理策略"></a>数据恢复阶段过期数据的处理策略</h2><h3 id="RDB方式-1"><a href="#RDB方式-1" class="headerlink" title="RDB方式"></a>RDB方式</h3><blockquote>
+<ol>
+<li>过期的Key不会被持久化到文件中</li>
+<li>载入时过期的key，会通过redis的主动和被动方式清理掉</li>
+</ol>
+</blockquote>
+<h3 id="AOF方式-1"><a href="#AOF方式-1" class="headerlink" title="AOF方式"></a>AOF方式</h3><blockquote>
+<p>  当Redis使用AOD方式持久化时，每次遇到过期的key,Redis会追加一条DEL命令到AOF文件</p>
+<p>  也就是：当我们顺序载入执行AOF命令文件就会删除过期的键</p>
+</blockquote>
+<h2 id="Redis内存回收策略"><a href="#Redis内存回收策略" class="headerlink" title="Redis内存回收策略"></a>Redis内存回收策略</h2><blockquote>
+<p>  配置文件中设置：maxmemory-policy noeviction</p>
+<p>  动态调整：config set maxmemory-policy noeviction</p>
+</blockquote>
+<img src="/2019/12/12/redis%E6%8C%81%E4%B9%85%E5%8C%96%E6%9C%BA%E5%88%B6/memory-policy.png">
+
+<h3 id="LRU算法"><a href="#LRU算法" class="headerlink" title="LRU算法"></a>LRU算法</h3><blockquote>
+<p>  LRU(Least recentyl used ，最近最少使用)：根据数据的历史访问记录来进行淘汰数据</p>
+<ul>
+<li>核心思想：如果数据最近被访问过，那么将来被访问的几率也更高</li>
+<li>注意：Redis的LRU算法并非完整的实现,完整的LRU实现是因为需要太多的内存</li>
+<li>方法：通过对少量keys进行取样（50%），然后挥手其中一个最好的key</li>
+<li>配置方式：maxmemory-samples 5</li>
+</ul>
+</blockquote>
+<h3 id="LFU算法"><a href="#LFU算法" class="headerlink" title="LFU算法"></a>LFU算法</h3><blockquote>
+<p>LFU（Least Frequently Used）根据数据的历史访问频率来淘汰数据</p>
+<ul>
+<li>核心思想：如果数据过去被访问多次，那么将来被访问的频率也更高</li>
+<li>Redis实现的是<font color="red">近似</font>的实现，每次对ke y进行访问时，用基于<font color="red">概率的对数计数器</font>来记录访问次数，同时这个计数器会随着时间推移而减小。</li>
+<li>启用LFU算法后，可以使用热点数据分析功能（redis-cli –hotkeys）</li>
+</ul>
+</blockquote>
+]]></content>
+      <categories>
+        <category>-Redis</category>
+      </categories>
+      <tags>
+        <tag>redis</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>volatile</title>
+    <url>/2019/12/09/volatile/</url>
+    <content><![CDATA[<h1 id="1-volatile介绍"><a href="#1-volatile介绍" class="headerlink" title="1.volatile介绍"></a>1.volatile介绍</h1><p>简介：volatile是Java虚拟机提供的<font color="red"><code>轻量级</code></font>的同步机制。</p>
+<h1 id="2-volatile特性"><a href="#2-volatile特性" class="headerlink" title="2.volatile特性"></a>2.volatile特性</h1><blockquote>
+<p>  1.保证可见性</p>
+<p>  2.禁止指令重排</p>
+<p>  3.<font color="red">不保证原子性</font></p>
+</blockquote>
+<h2 id="2-1-JMM"><a href="#2-1-JMM" class="headerlink" title="2.1 JMM"></a>2.1 JMM</h2><p>在介绍volatile的3特性之前。我们先说一下JMM。</p>
+<h3 id="2-1-1-什么是JMM？"><a href="#2-1-1-什么是JMM？" class="headerlink" title="2.1.1 什么是JMM？"></a>2.1.1 什么是JMM？</h3><p>简介：JMM是（Java内存模型Java Memory Model）本身是一种抽象的概念，并不真实存在，它描述的是一组规范或者规则。</p>
+<p>由于JVM运行程序的实体是线程,而每个线程创建时JVM都会为其创建一个<font color="red">工作内存</font>(有些地方成为栈空间),</p>
+<p>工作内存是每个线程的私有数据区域, 而Java内存模型中规定所有变量都存储在主内存,</p>
+<p>主内存是共享内存区域,所有线程都可访问,<font color="red">但线程对变量的操作(读取赋值等)必须在工作内存中进行,首先要将变量从主内存拷贝到自己的工作空间,然后对变量进行操作,操作完成再将变量写回主内存</font>,不能直接操作主内存中的变量,各个线程中的工作内存储存着主内存中的变量副本拷贝,</p>
+<p>因此不同的线程无法访问对方的工作内存,此案成间的通讯(传值) 必须通过主内存来完成,其简要访问过程如下图:</p>
+<img src="/2019/12/09/volatile/jmm.png" style="zoom:80%;">
+
+<h3 id="2-1-2-JMM-保证线程安全的特性"><a href="#2-1-2-JMM-保证线程安全的特性" class="headerlink" title="2.1.2 JMM 保证线程安全的特性"></a>2.1.2 JMM 保证线程安全的特性</h3><blockquote>
+<ul>
+<li>保证可见性</li>
+<li>保证原子性</li>
+<li>禁止指令重排</li>
+</ul>
+</blockquote>
+<h2 id="2-2-可见性"><a href="#2-2-可见性" class="headerlink" title="2.2 可见性"></a>2.2 可见性</h2><p>各个线程对主内存中共享变量的操作都是各自的线程拷贝到各自的工作内存中，操作后再写回主内存中。</p>
+<blockquote>
+<p>  存在问题：线程A修改了共享变量X的值（在自己的线程中进行修改）但是还未写回到主内存中，这时另外一个线程B又对内存中的一个共享变量X进行操作,但此时A线程工作内存中的共享变量X对线程B来说是<font color="red">不可见</font>的,这种<font color="red">工作内存与主内存</font><strong>同步延迟现象</strong>造成了可见性的问题</p>
+</blockquote>
+<h2 id="2-3-原子性"><a href="#2-3-原子性" class="headerlink" title="2.3 原子性"></a>2.3 原子性</h2><img src="/2019/12/09/volatile/volatileNoSafe.png" style="zoom:80%;">
+
+<p>volatile 不保证其原子性。保证原子性需加锁或者CAS等</p>
+<h2 id="2-4-有序性-禁止指令重排"><a href="#2-4-有序性-禁止指令重排" class="headerlink" title="2.4 有序性(禁止指令重排)"></a>2.4 有序性(禁止指令重排)</h2><p>计算机在执行程序时,为了提高性能，编译器和处理器尝尝会做指令重排,一般分为以下3种</p>
+<img src="/2019/12/09/volatile/sort.png">
+
+<p>单线程环境里面确保程序最终执行结果和代码顺序执行结果一直。</p>
+<p>处理器在进行重新排序是必须考虑指令之间的<font color="red">数据依赖性</font></p>
+<p>多线程环境中线程交替执行,由于编译器优化重排的存在，两个线程适中的变量能否保持一致性是无法预料的。</p>
+]]></content>
+      <categories>
+        <category>-Java</category>
+      </categories>
+      <tags>
+        <tag>多线程</tag>
+        <tag>线程安全</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>多线程详解</title>
+    <url>/2019/12/09/%E5%A4%9A%E7%BA%BF%E7%A8%8B%E8%AF%A6%E8%A7%A3/</url>
+    <content><![CDATA[<h1 id="1-JUC多线程及并发包"><a href="#1-JUC多线程及并发包" class="headerlink" title="1.    JUC多线程及并发包"></a>1.    JUC多线程及并发包</h1>]]></content>
+      <categories>
+        <category>-Java</category>
+      </categories>
+      <tags>
+        <tag>线程安全</tag>
+      </tags>
+  </entry>
+</search>
