@@ -29,7 +29,9 @@
 
     {% if not headlessPost %}
       <header class="post-header">
-
+      	{% if theme.canvas_nest %}
+<script type="text/javascript" src="//cdn.bootcss.com/canvas-nest.js/1.0.0/canvas-nest.min.js"></script>
+{% endif %}
         {# Not to show title for quote posts that do not have a title #}
         {% if not (is_index and post.type === 'quote' and not post.title) %}
           <{% if theme.seo %}h2{% else %}h1{% endif %} class="post-title{% if post.direction && post.direction.toLowerCase() === 'rtl' %} rtl{% endif %}" itemprop="name headline">{#
@@ -330,6 +332,11 @@
         {{ post.content }}
       {% endif  %}
     </div>
+    <div>
+{% if not is_index %}
+{% include 'passage-end-tag.swig' %}
+{% endif %}
+</div>
     {#####################}
     {### END POST BODY ###}
     {#####################}

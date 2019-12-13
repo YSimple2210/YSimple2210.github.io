@@ -2,8 +2,7 @@
 title: redis哨兵高可用
 date: 2019-12-13 12:53:23
 tags: [redis哨兵]
-categories: 
--Redis
+categories: -Redis
 ---
 
 # Redis哨兵

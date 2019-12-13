@@ -134,3 +134,10 @@ live2d:
     height: 300
   mobile:
     show: true
+search:
+ path: ./public/search.xml
+ field: post
+ format: html
+ limit: 10000
+passage_end_tag:
+  enabled: true

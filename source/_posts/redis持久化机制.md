@@ -1,9 +1,8 @@
 ---
 title: redis持久化机制
 date: 2019-12-12 13:06:20
-tags:[redis]
-categories: 
--Redis
+tags: [redis]
+categories: -Redis
 ---
 
 
